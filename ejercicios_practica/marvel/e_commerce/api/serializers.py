@@ -23,7 +23,7 @@ class ComicSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        # fields = '__all__'
+        fields = '__all__'
         exclude = ('password',)
 
 
@@ -43,3 +43,9 @@ class TokenSerializer(serializers.ModelSerializer):
         
 
 # TODO: Realizar el serializador para el modelo de WishList
+class WishListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = WishList
+        fields = ('__all__')
+

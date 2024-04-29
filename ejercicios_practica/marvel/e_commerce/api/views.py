@@ -1,8 +1,10 @@
 from django.forms.models import model_to_dict
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import authenticate
 
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.authentication import TokenAuthentication
 # (GET - ListAPIView) Listar todos los elementos en la entidad:
 # (POST - CreateAPIView) Inserta elementos en la DB
 # (GET - RetrieveAPIView) Devuelve un solo elemento de la entidad.
@@ -22,9 +24,13 @@ from rest_framework.generics import (
 from rest_framework.response import Response
 from rest_framework.validators import ValidationError
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from e_commerce.api.serializers import *
-from e_commerce.models import Comic
+from e_commerce.models import Comic, WishList
 
 
 @api_view(http_method_names=['GET'])
@@ -225,3 +231,87 @@ class GetOneMarvelComicAPIView(RetrieveAPIView):
 #         return Response(
 #             data=serializer.data, status=status.HTTP_200_OK
 #         )
+
+# API Views for User
+class UserListAPIView(ListAPIView):
+    '''
+    `[METODO GET]`
+    Esta vista de API nos devuelve una lista de todos los usuarios presentes en la base de datos.
+    '''
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+class UserRetrieveAPIView(RetrieveAPIView):
+    '''
+    `[METODO GET]`
+    Esta vista de API nos devuelve un usuario en particular
+    de la BBDD, pasado x la url como parametro.
+    '''
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'username'
+
+# API Views for WishList
+class WishListAPIView(ListCreateAPIView):
+    '''
+    `[METODO GET-POST]`
+    Esta vista de API nos devuelve una lista de todos los wishlists 
+    en la base de datos.
+    Tambien nos permite hacer un insert en la base de datos.
+    '''
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+
+class GetWishListAPIView(ListAPIView):
+    '''
+    `[METODO GET]`
+    Esta vista de API nos devuelve una lista 
+    '''
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    authentication_classes = ()
+    permission_classes = (AllowAny)
+
+class PostWishListAPIView(CreateAPIView):
+    
+
+
+
+class LoginUserAPIView(APIView):
+    '''
+    ```
+    Vista de API personalizada para recibir peticiones de tipo POST.
+    Esquema de entrada:
+    {"username":"root", "password":12345}
+    
+    Esta función sobrescribe la función post original de esta clase,
+    recibe "request" y hay que setear format=None, para poder recibir 
+    los datos en "request.data", la idea es obtener los datos enviados en el 
+    request y autenticar al usuario con la función "authenticate()", 
+    la cual devuelve el estado de autenticación.
+    Luego con estos datos se consulta el Token generado para el usuario,
+    si no lo tiene asignado, se crea automáticamente.
+    Esquema de entrada:\n
+    {
+        "username": "root",
+        "password": 12345
+    }
+    ```
+    '''
+    authentication_classes = ()
+    permission_classes = ()
+
+    def post(self, request):
+        user_login_serializer = UserLoginSerializer(data=request.data)
+
+        if user_login_serializer.is_valid():
+            _username = request.data.get('username')
+            _password = request.data.get('password')
+
+            # token
+            _account = authenticate(username=_username, password=_password)
+            if _account:
+                _token, _created = Token.objects.get_or_create(user=_account)
+                return Response(data=TokenSerializer(instance=_token, many=False).data, status=status.HTTP_200_OK)
+            return Response(data={'error': 'Invalid Credentials.'}, status=status.HTTP_400_BAD_REQUEST)
+
