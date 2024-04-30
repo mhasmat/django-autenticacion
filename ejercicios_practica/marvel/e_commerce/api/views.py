@@ -294,7 +294,7 @@ class UpdateWishListAPIView(UpdateAPIView):
     serializer_class = WishListSerializer
     permission_classes = (IsAuthenticated | IsAdminUser,)
     authentication_classes = [TokenAuthentication]
-    lookup_field = 'marvel_id'
+    # lookup_field = 'marvel_id'
 
     def put(self, request, *args, **kwargs):
         _serializer = self.get_serializer(
