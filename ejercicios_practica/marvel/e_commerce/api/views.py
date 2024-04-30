@@ -270,14 +270,55 @@ class GetWishListAPIView(ListAPIView):
     queryset = WishList.objects.all()
     serializer_class = WishListSerializer
     authentication_classes = ()
-    permission_classes = (AllowAny)
+    permission_classes = (AllowAny,)
 
 class PostWishListAPIView(CreateAPIView):
+    '''
+    `[METODO POST]`
+    Esta vista de API nos permite hacer un insert en la base de datos.
+    '''
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = [TokenAuthentication]
     
+class UpdateWishListAPIView(UpdateAPIView):
+    '''
+    `[METODO PUT-PATCH]`
+    Esta vista de API nos permite actualizar un registro,
+    o simplemente visualizarlo.
+    '''
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    permission_classes = (IsAuthenticated & IsAdminUser,)
+    authentication_classes = [TokenAuthentication]
+    lookup_field = 'marvel_id'
+
+    def put(self, request, *args, **kwargs):
+        _serializer = self.get_serializer(
+            instance=self.get_object(),
+            data=request.data,
+            many=False,
+            partial=True
+        )
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(data=_serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            data=_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+        )
+    
+class DeleteWishListAPIView(DestroyAPIView):
+    '''
+    `[METODO DELETE]`    
+    '''
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    permission_classes = (IsAdminUser,)
+    authentication_classes = [TokenAuthentication]
 
 
-
-class LoginUserAPIView(APIView):
+class LoginUserAPIView(APIView):    
     '''
     ```
     Vista de API personalizada para recibir peticiones de tipo POST.
@@ -301,6 +342,55 @@ class LoginUserAPIView(APIView):
     authentication_classes = ()
     permission_classes = ()
 
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT, 
+            properties={
+                'username': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='username'
+                ),
+                'password': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    format=openapi.FORMAT_PASSWORD,
+                    description='password'
+                ),
+            }
+        ),
+        responses= {
+            "201": openapi.Response(
+                description='Token: api-key',
+                examples={
+                    "application/json": {
+                        "user": {
+                            "id": 1,
+                            "last_login": "2023-01-21T20:45:49.915124Z",
+                            "is_superuser": True,
+                            "username": "root",
+                            "first_name": "first_name",
+                            "last_name": "last_name",
+                            "email": "info@inove.com.ar",
+                            "is_staff": True,
+                            "is_active": True,
+                            "date_joined": "2023-01-21T20:45:37.572526Z",
+                            "groups": [],
+                            "user_permissions": []
+                        },              
+                        "token": "2c9dc08814ad3354bcd924a1ca70edef4032efc5"
+                    }
+                }
+            ),
+           "400": openapi.Response(
+                description='Credenciales Inválidas',
+                examples={
+                    "application/json": {
+                        'error': 'Invalid Credentials'
+                    }
+                }
+            ),
+        }
+    )
+
     def post(self, request):
         user_login_serializer = UserLoginSerializer(data=request.data)
 
@@ -312,6 +402,9 @@ class LoginUserAPIView(APIView):
             _account = authenticate(username=_username, password=_password)
             if _account:
                 _token, _created = Token.objects.get_or_create(user=_account)
-                return Response(data=TokenSerializer(instance=_token, many=False).data, status=status.HTTP_200_OK)
+                return Response(data=TokenSerializer(instance=_token, many=False).data, status=status.HTTP_200_OK)            
+            
             return Response(data={'error': 'Invalid Credentials.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(data=user_login_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
